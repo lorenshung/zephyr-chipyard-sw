@@ -38,6 +38,9 @@ set(ROSE_USE_PID 0 CACHE STRING "1=hierarchical PID, 0=TinyMPC")
 # ROSE_CTRL_DIV (control runs every Nth estimator tick -> control rate = estimation / N).
 set(ROSE_THREADED 0 CACHE STRING "1=threaded blocks, 0=single loop (default; see main.cpp note)")
 set(ROSE_CTRL_DIV 1 CACHE STRING "control every Nth estimator tick (multi-rate)")
+# Control-loop iteration count. Default 5000 suits the RoSE co-sim; on real HW the loop runs
+# ~1 kHz, so raise this for a longer bench run (e.g. 120000 ~= 2 min).
+set(CTRL_ITERS 5000 CACHE STRING "control-loop iteration count")
 
 target_sources(app PRIVATE
   src/main.cpp
@@ -51,7 +54,7 @@ target_sources(app PRIVATE
 
 target_compile_definitions(app PRIVATE ROSE_USE_EKF=${ROSE_USE_EKF}
   ROSE_USE_PID=${ROSE_USE_PID}
-  ROSE_THREADED=${ROSE_THREADED} ROSE_CTRL_DIV=${ROSE_CTRL_DIV})
+  ROSE_THREADED=${ROSE_THREADED} ROSE_CTRL_DIV=${ROSE_CTRL_DIV} CTRL_ITERS=${CTRL_ITERS})
 
 target_include_directories(app PRIVATE
   ${TINYMPC}/external/admm/include
