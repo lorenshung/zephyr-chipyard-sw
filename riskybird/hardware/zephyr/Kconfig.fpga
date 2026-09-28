@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+
+# The backend SoC describes its largest QEMU interrupt topology. The physical
+# RiskyBird's DroneLogic shell has PLIC sources 1..15. Zephyr reserves primary
+# IRQ indices 0..11 and places the 15-source PLIC table at offset 12, so
+# NUM_IRQS must cover 12+15 entries. NUM_IRQS has no prompt, so this default
+# must be declared before Kconfig.zephyr.
+config NUM_IRQS
+	default 27 if SOC_FAMILY_ROCKETCHIP_VIRT_RISCV

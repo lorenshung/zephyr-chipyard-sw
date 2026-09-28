@@ -1,0 +1,63 @@
+/*
+ * Bootup check with the four motor outputs added. PROPELLERS OFF, BATTERY REQUIRED.
+ *
+ * Declaring these aliases is what compiles the motor stage in at all -- main.c
+ * guards it on DT_NODE_EXISTS(DT_ALIAS(pwm_motor1)) -- so the default mode is
+ * actuation-free by construction rather than by a runtime flag.
+ *
+ * This uses "pwm-leds", the same stock binding motor_1.overlay..motor_4.overlay
+ * use, rather than the flight controller's riskybird,pwm-motors group. That is
+ * deliberate: the group's binding lives inside the rose_flight_controller
+ * sample, and Zephyr rejects two DTS roots declaring one compatible outright
+ * ("both ... have 'compatible: riskybird,pwm-motors'"), so a second copy here
+ * would break every flight_controller build. pwm-leds is already in tree.
+ */
+
+#include "bootup_check.overlay"
+
+/ {
+	/*
+	 * Channel map from the harness binder (WithArty200TPWM in
+	 * backends/chipyard/fpga/.../arty200t/HarnessBinders.scala), the only
+	 * authority on which comparator reaches which pin:
+	 *
+	 *   motor1  pwm0 cmp1  E22  J1_31
+	 *   motor2  pwm0 cmp2  B20  J1_36
+	 *   motor3  pwm0 cmp3  R17  J1_99
+	 *   motor4  pwm1 cmp1  F13  J1_100
+	 *
+	 * Comparator 0 is absent on purpose: it sets the shared period and
+	 * Zephyr's sifive driver refuses to drive it, which is why four motors
+	 * need two blocks.
+	 *
+	 * TWO CELLS, not three: sifive,pwm0 declares "#pwm-cells" as const 2,
+	 * <&pwm0 ch period> with no flags cell, unlike the ESP LEDC binding.
+	 *
+	 * 50000 ns = 20 kHz, matching the ESP build. At the 50 MHz peripheral
+	 * clock that is 2500 cycles, inside the 16-bit comparator, so pwmscale
+	 * stays 0 and duty resolution is 1/2500 = 0.04%.
+	 */
+	pwm-motors {
+		compatible = "pwm-leds";
+
+		motor1_pwm: motor1-pwm { pwms = <&pwm0 1 50000>; };
+		motor2_pwm: motor2-pwm { pwms = <&pwm0 2 50000>; };
+		motor3_pwm: motor3-pwm { pwms = <&pwm0 3 50000>; };
+		motor4_pwm: motor4-pwm { pwms = <&pwm1 1 50000>; };
+	};
+
+	aliases {
+		pwm-motor1 = &motor1_pwm;
+		pwm-motor2 = &motor2_pwm;
+		pwm-motor3 = &motor3_pwm;
+		pwm-motor4 = &motor4_pwm;
+	};
+};
+
+&pwm0 {
+	status = "okay";
+};
+
+&pwm1 {
+	status = "okay";
+};

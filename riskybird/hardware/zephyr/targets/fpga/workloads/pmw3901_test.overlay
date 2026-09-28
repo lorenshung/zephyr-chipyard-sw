@@ -1,0 +1,16 @@
+/*
+ * Logical PMW3901 signal indices for the Chipyard DroneLogic GPIO block.
+ * Package-pin routing remains a board constraint, not an application detail.
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/ {
+	riskybird_pmw3901: pmw3901-wiring {
+		compatible = "riskybird,pmw3901";
+		spi-bus = <&spi0>;
+		cs-gpios = <&gpio0 0 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&gpio0 1 GPIO_ACTIVE_LOW>;
+		led-gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
+	};
+};

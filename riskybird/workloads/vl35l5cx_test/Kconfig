@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "RiskyBird four-VL53L5CX bring-up"
+
+config RB_VL53L5CX_RANGING
+	bool "Initialize VL53L5CX ULD and stream ranging grids"
+	default n
+	help
+	  Enable the pinned VL53L5CX Zephyr driver. The default address mode
+	  validates ADS7128 XSHUT sequencing and sensor identities using only
+	  the public I2C API.
+
+rsource "../../hardware/zephyr/Kconfig.fpga"
+
+source "Kconfig.zephyr"

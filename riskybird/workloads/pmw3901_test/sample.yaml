@@ -1,0 +1,6 @@
+sample:
+  description: RiskyBird PMW3901 SPI optical-flow diagnostic
+  name: pmw3901 diagnostic
+common:
+  tags: spi sensor optical-flow riskybird
+tests: {}

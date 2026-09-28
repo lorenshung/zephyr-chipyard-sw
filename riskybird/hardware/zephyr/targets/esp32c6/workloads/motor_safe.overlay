@@ -1,0 +1,42 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * MOTOR1=GPIO21, MOTOR2=GPIO20, MOTOR3=GPIO23, MOTOR4=GPIO22. Both the ESP
+ * and FPGA reach the same MOSFET gates, so these must be inputs while the FPGA
+ * owns the motors. Pull-downs keep the gates off when neither side drives.
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/ {
+	chosen {
+		zephyr,console = &usb_serial;
+		zephyr,shell-uart = &usb_serial;
+	};
+};
+
+&gpio0 {
+	riskybird_motor_safe_hog: riskybird-motor-safe-hog {
+		gpio-hog;
+		gpios = <21 GPIO_PULL_DOWN>,
+			<20 GPIO_PULL_DOWN>,
+			<23 GPIO_PULL_DOWN>,
+			<22 GPIO_PULL_DOWN>;
+		input;
+		line-name = "RiskyBird shared motor nets";
+	};
+};
+
+/* Never attach the LEDC output matrix in the passive-owner image. */
+&ledc0 {
+	status = "disabled";
+};
+
+/* The same native USB port used to flash this image carries its proof text. */
+&usb_serial {
+	status = "okay";
+};
+
+&uart0 {
+	status = "disabled";
+};

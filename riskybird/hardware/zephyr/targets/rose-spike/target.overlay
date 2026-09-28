@@ -1,0 +1,11 @@
+/* RoSE adapter presented by the cycle-budgeted Spike harness. */
+/ {
+	rose0: rose@2000 {
+		compatible = "ucbbar,RoseAdapter";
+		reg = <0x2000 0x1000>;
+		num-reqrsp-channels = <2>;
+		num-dma-channels = <1>;
+		dma-base-address = <0x88000000>;
+		status = "okay";
+	};
+};

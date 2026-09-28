@@ -1,40 +1,4 @@
-# App-level west manifest for zephyr-chipyard-sw.
-#
-# Makes this repo a self-contained west workspace: it imports the ucb-bar/zephyr
-# fork's curated RISC-V module set (west-riscv.yml) and adds the RoSE bridge guest
-# module (ucb-bar/zephyr-rose) as a project, so the rose samples build with no
-# -DZEPHYR_EXTRA_MODULES injection.
-#
-# Bootstrap a workspace:
-#   west init -l .            # from this repo's root
-#   west update
-#   west build -b spike_riscv64 samples/rose_flight_controller
+# Run scripts/bootstrap-riskybird.sh; workspace lives in zephyr_ws.
 manifest:
-  remotes:
-    - name: ucb-bar
-      url-base: https://github.com/ucb-bar
-
-  defaults:
-    remote: ucb-bar
-
-  projects:
-    # The Zephyr RTOS fork; import its RISC-V manifest to pull the curated module set.
-    # rose-2-dev carries the bmi08x/vl53l1x ESP32-C6 I2C fixes and the VL53L1X
-    # metre conversion the flight-controller estimator depends on; the previous
-    # pin (4329bf61, 2025-11-22) predates all of it. The zephyr_ws/zephyr
-    # submodule is the tree rb actually builds -- keep the two in step.
-    - name: zephyr
-      repo-path: zephyr
-      revision: rose-2-dev
-      import: west-riscv.yml
-    # RoSE co-sim bridge guest module (split out of ucb-bar/RoSE:soc/sw/zephyr-rose).
-    # Tracks rose-2-dev, not main: samples/rose_nav_controller selects ROSE_CAMERA and
-    # ROSE_VISION, which the camera/vision work added after the main-branch split. On
-    # main the nav controller fails Kconfig with "undefined symbol ROSE_CAMERA".
-    - name: zephyr-rose
-      repo-path: zephyr-rose
-      revision: rose-2-dev
-      path: modules/lib/zephyr-rose
-
   self:
-    path: zephyr-chipyard-sw
+    import: zephyr_ws/manifest/west.yml

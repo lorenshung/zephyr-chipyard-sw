@@ -1,0 +1,49 @@
+/* RiskyBird ESP32-C6 target configuration. */
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * PMW3901 bring-up overlay (SPI2 pinmux)
+ *
+ * Pin mapping (riskybird PCB):
+ * - SCK:  GPIO6
+ * - MOSI: GPIO7
+ * - MISO: GPIO18
+ * - CS:   GPIO19  (handled as a normal GPIO in software; not hardware CSEL)
+ * - RST:  GPIO2   (optional, active-low)
+ * - LED:  GPIO3   (optional, active-low)
+ *
+ * This overlay reconfigures SPI2 pinmux to match the PMW3901 wiring.
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/ {
+	riskybird_pmw3901: pmw3901-wiring {
+		compatible = "riskybird,pmw3901";
+		spi-bus = <&spi2>;
+		cs-gpios = <&gpio0 19 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
+		led-gpios = <&gpio0 3 GPIO_ACTIVE_LOW>;
+	};
+};
+
+&pinctrl {
+	spim2_pmw3901: spim2_pmw3901 {
+		group1 {
+			pinmux = <SPIM2_MISO_GPIO18>,
+				 <SPIM2_SCLK_GPIO6>,
+				 <SPIM2_CSEL_GPIO10>;
+		};
+
+		group2 {
+			pinmux = <SPIM2_MOSI_GPIO7>;
+			output-low;
+		};
+	};
+};
+
+&spi2 {
+	status = "okay";
+	pinctrl-0 = <&spim2_pmw3901>;
+	pinctrl-names = "default";
+};

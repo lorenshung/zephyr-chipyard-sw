@@ -1,0 +1,42 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * VL53L5CX ranging devices. Shared I2C wiring and bitrate come from the ESP
+ * target contract.
+ *
+ * One node per slot of vl35l5cx_test's array that can hold a VL53L5CX: slots
+ * 0-2, the side headers on ADS7128 GPIO1-3. Slot 3 (GPIO6, 0x34) is the down
+ * VL53L1X, which the VL53L5CX driver cannot range, so it has no node and the
+ * workload skips it. Keep in step with
+ * hardware/zephyr/targets/fpga/workloads/vl35l5cx_test.overlay.
+ */
+
+&i2c0 {
+	/* Final unique addresses after reprogramming (see sample logic). */
+	vl53l5cx0: vl53l5cx@31 {
+		compatible = "st,vl53l5cx";
+		reg = <0x31>;
+		status = "okay";
+	};
+
+	vl53l5cx1: vl53l5cx@32 {
+		compatible = "st,vl53l5cx";
+		reg = <0x32>;
+		status = "okay";
+	};
+
+	vl53l5cx2: vl53l5cx@33 {
+		compatible = "st,vl53l5cx";
+		reg = <0x33>;
+		status = "okay";
+	};
+};
+
+/ {
+	/* Define aliases for easier access in code */
+	aliases {
+		tof0 = &vl53l5cx0;
+		tof1 = &vl53l5cx1;
+		tof2 = &vl53l5cx2;
+	};
+};

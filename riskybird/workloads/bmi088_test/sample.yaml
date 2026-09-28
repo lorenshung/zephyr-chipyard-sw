@@ -1,0 +1,6 @@
+sample:
+  description: RiskyBird BMI088 sensor diagnostic
+  name: bmi088 diagnostic
+common:
+  tags: i2c sensor imu riskybird
+tests: {}

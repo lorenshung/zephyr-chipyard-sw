@@ -1,0 +1,8 @@
+/*
+ * Portable address/XSHUT mode uses i2c0 directly. No sensor nodes are
+ * instantiated because the optional VL53L5CX ULD is not needed.
+ */
+
+&i2c0 {
+	status = "okay";
+};

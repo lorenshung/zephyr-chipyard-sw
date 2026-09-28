@@ -1,0 +1,92 @@
+/*
+ * The second peripheral UART: the ESP32 link.
+ *
+ * Only the full drone shells elaborate this controller
+ * (RocketArty200TDroneFullDDR*Config). Zephyr's chipyard-riscv.dtsi declares
+ * only uart0, so without this node the ESP link is not addressable from an
+ * application at all even though the hardware is present -- which is why the
+ * second UART sat unused after the shells were pulled.
+ *
+ * `rb` appends this overlay only when the generated DTS actually contains
+ * serial@10021000, and refuses the build if that node's PLIC source differs
+ * from the 11 hardcoded below.
+ *
+ * Wiring, from the shell's own generated XDC:
+ *
+ *   uart1_rxd  E13  J1_96   FPGA input   <- ESP TX
+ *   uart1_txd  F14  J1_98   FPGA output  -> ESP RX
+ *
+ * Both are bank 16, LVCMOS33, IOB TRUE -- the same bank as the JTAG block and
+ * the console pair, which is the bank this bench has already proven live.
+ *
+ * Note the direction convention, because getting it backwards is silent: rxd is
+ * what the FPGA receives, so the ESP's transmitter drives J1_96.
+ *
+ * This deliberately does NOT set zephyr,console or zephyr,shell-uart. The
+ * console stays on uart0 where the FTDI can see it; the ESP link is a data
+ * path an application opens by name, not somewhere printf should go. Point the
+ * console here and every diagnostic disappears into the ESP.
+ *
+ * The baud rate below is measured, not assumed: the ESP firmware (esp_bridge,
+ * esp_motors) runs its end at 115200, and on 2026-09-21 the link carried 1212
+ * motor_link frames with zero CRC, noise or loss errors; every flight of
+ * 2026-09-23/24 then ran over it. If a changed firmware produces framing
+ * garbage rather than silence, the rate is the first thing to check --
+ * garbage means a real signal at the wrong rate, silence means no signal at
+ * all.
+ */
+
+/ {
+	soc {
+		uart1: uart@10021000 {
+			compatible = "sifive,uart0";
+			reg = <0x10021000 0x1000>;
+			reg-names = "control";
+			interrupt-parent = <&plic>;
+			interrupts = <11 1>;
+			clock-frequency = <50000000>;
+			current-speed = <115200>;
+			status = "okay";
+		};
+	};
+
+	aliases {
+		esp-uart = &uart1;
+	};
+};
+
+/*
+ * Every PLIC source above 11 moves up by one when this UART exists.
+ *
+ * Chipyard assigns PLIC sources in elaboration order, so inserting a second
+ * UART at 11 pushes everything after it up. hardware/zephyr/fpga-drone.overlay
+ * declares the pre-uart1 numbering, which is correct for MotorSpad, FlowSpad
+ * and DroneLogic and WRONG for the full drone shell:
+ *
+ *   node             without uart1   with uart1
+ *   gpio@10010000    11, 12, 13      12, 13, 14
+ *   spi@10031000     14              15
+ *   ospi@10080000    15              16
+ *
+ * Read from the elaborated DTS of each config, not inferred. This matters more
+ * than it looks: spi@10031000 is the PMW3901 optical-flow link, so the stale
+ * numbering points the flow sensor's interrupt at the wrong source -- which
+ * fails as "no optical flow", not as anything that names an interrupt.
+ *
+ * The override lives here rather than in a fourth drone overlay because the
+ * shift is caused by this node existing; the two cannot disagree if they are
+ * the same file. tools/rb asserts the DTS agrees with these numbers at build
+ * time, so a future shell that numbers differently fails loudly.
+ */
+&gpio0 {
+	interrupts = <12 1>, <13 1>, <14 1>;
+};
+
+&spi0 {
+	interrupts = <15 1>;
+};
+
+&plic {
+	/* ospi@10080000 sits at 16 in this shell; 15 cannot reach it. */
+	riscv,ndev = <16>;
+};

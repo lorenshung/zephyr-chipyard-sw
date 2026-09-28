@@ -1,0 +1,6 @@
+sample:
+  description: Four VL53L5CX sensors using ADS7128 XSHUT controls
+  name: four vl53l5cx diagnostic
+common:
+  tags: i2c sensor tof riskybird
+tests: {}

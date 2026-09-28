@@ -1,0 +1,5 @@
+/*
+ * Portable address/XSHUT mode. It intentionally creates no Zephyr sensor
+ * devices; the workload probes and readdresses the four devices directly.
+ * Shared I2C pins and 400 kHz bitrate come from the ESP target contract.
+ */

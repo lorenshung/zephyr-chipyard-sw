@@ -1,0 +1,6 @@
+sample:
+  description: RiskyBird ADS7128 register and GPIO diagnostic
+  name: ads7128 diagnostic
+common:
+  tags: i2c adc sensor riskybird
+tests: {}

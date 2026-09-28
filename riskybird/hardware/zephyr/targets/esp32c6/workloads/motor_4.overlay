@@ -1,0 +1,109 @@
+/* RiskyBird ESP32-C6 target configuration. */
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Overlay for 4 motor PWMs on ESP32C6 (custom PCB).
+ * Routed PCB mapping:
+ * MOTOR1=GPIO21, MOTOR2=GPIO20, MOTOR3=GPIO23, MOTOR4=GPIO22.
+ * Motor start/stop: use console UART (same USB as the board).
+ * 20 kHz PWM (same as working single-motor setup).
+ */
+
+#include <zephyr/dt-bindings/pwm/pwm.h>
+
+/ {
+	/*
+	 * Console on the native USB Serial/JTAG unit, as motor_safe.overlay
+	 * already does. The board default is uart0 (esp32c6_devkitc_hpcore.dts
+	 * chooses it), which is not reachable over the same USB cable used to
+	 * flash -- so "use console UART (same USB as the board)" above was not
+	 * true for this image: the port stayed silent and keystrokes reached
+	 * nothing. Measured 2026-09-16.
+	 *
+	 * This redirects input as well as output: UART_NODE in
+	 * workloads/motor_4/src/main.c falls back to DT_CHOSEN(zephyr_console)
+	 * when no motor_uart alias exists, and this overlay defines none.
+	 */
+	chosen {
+		zephyr,console = &usb_serial;
+		zephyr,shell-uart = &usb_serial;
+	};
+
+	aliases {
+		pwm-0 = &ledc0;
+		pwm-motor0 = &pwm_motor0;
+		pwm-motor1 = &pwm_motor1;
+		pwm-motor2 = &pwm_motor2;
+		pwm-motor3 = &pwm_motor3;
+	};
+
+	pwmleds {
+		compatible = "pwm-leds";
+
+		pwm_motor0: pwm_motor_gpio21 {
+			label = "MOTOR1";
+			pwms = <&ledc0 0 20000 PWM_POLARITY_NORMAL>;
+		};
+
+		pwm_motor1: pwm_motor_gpio20 {
+			label = "MOTOR2";
+			pwms = <&ledc0 1 20000 PWM_POLARITY_NORMAL>;
+		};
+
+		pwm_motor2: pwm_motor_gpio23 {
+			label = "MOTOR3";
+			pwms = <&ledc0 2 20000 PWM_POLARITY_NORMAL>;
+		};
+
+		pwm_motor3: pwm_motor_gpio22 {
+			label = "MOTOR4";
+			pwms = <&ledc0 3 20000 PWM_POLARITY_NORMAL>;
+		};
+	};
+};
+
+&pinctrl {
+	ledc0_default: ledc0_default {
+		group1 {
+			pinmux = <LEDC_CH0_GPIO21>,
+				 <LEDC_CH1_GPIO20>,
+				 <LEDC_CH2_GPIO23>,
+				 <LEDC_CH3_GPIO22>;
+			output-enable;
+		};
+	};
+
+};
+
+&ledc0 {
+	pinctrl-0 = <&ledc0_default>;
+	pinctrl-names = "default";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	channel0@0 {
+		reg = <0x0>;
+		timer = <0>;
+	};
+
+	channel1@1 {
+		reg = <0x1>;
+		timer = <0>;
+	};
+
+	channel2@2 {
+		reg = <0x2>;
+		timer = <0>;
+	};
+
+	channel3@3 {
+		reg = <0x3>;
+		timer = <0>;
+	};
+};
+
+/* Carries the console and the keystrokes, over the same cable used to flash. */
+&usb_serial {
+	status = "okay";
+};

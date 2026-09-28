@@ -1,0 +1,6 @@
+sample:
+  description: Legacy RiskyBird combined ESP sensor bring-up
+  name: legacy sensor bringup
+common:
+  tags: i2c spi sensor riskybird
+tests: {}

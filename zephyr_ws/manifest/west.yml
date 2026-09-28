@@ -1,0 +1,22 @@
+# Canonical workspace is zephyr_ws; bootstrap with scripts/bootstrap-riskybird.sh.
+manifest:
+  projects:
+    - name: zephyr
+      url: https://github.com/lorenshung/zephyr.git
+      revision: ed44a090074550505f3ba2449215ccba49f8e52e
+      path: zephyr
+      import: west-riscv.yml
+    - name: zephyr-rose
+      url: https://github.com/ucb-bar/zephyr-rose.git
+      revision: f7e2beef55e8d7176a16b0af01a538155e59f39e
+      path: modules/lib/zephyr-rose
+    - name: xnnpack
+      url: https://github.com/ucb-bar/XNNPACK.git
+      revision: 43e0628fb50db8097a44ebb0b4292ac1561fc657
+      path: modules/lib/xnnpack
+    - name: executorch
+      url: https://github.com/ucb-bar/executorch.git
+      revision: 54af43112622263bc77cd2bb867b1d6b29bce934
+      path: modules/lib/executorch
+  self:
+    path: manifest

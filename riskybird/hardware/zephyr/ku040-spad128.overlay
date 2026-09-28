@@ -1,0 +1,16 @@
+/*
+ * RAM size for RocketKU040Spad128Config: a 128 KiB mbus scratchpad instead of
+ * the 32 KiB that WithKU040Tweaks defaults to.
+ *
+ * Pair this with fpga-common.overlay, which already handles the console
+ * (chipyard_riscv64 selects &htif, which has no host on an FPGA), the one-hart
+ * cpu trim, and the PLIC source count. This file only overrides the size.
+ *
+ * Exists because a Zephyr hello_world does not fit 32 KiB: 54,128 B stock, and
+ * 36,400 B even with nano cbprintf, minimal libc and reduced stacks.
+ */
+
+&ram0 {
+	reg = <0x80000000 0x20000>;
+	status = "okay";
+};

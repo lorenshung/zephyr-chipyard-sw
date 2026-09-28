@@ -1,0 +1,18 @@
+/*
+ * The KU040 shell backs main memory with the board's two DDR4 components: one
+ * x16 Samsung K4A8G165WB-BIRC per HP bank (44 and 46), 1 GiB each, presented to
+ * the SoC as one contiguous 2 GiB region at 0x8000_0000. Keep this size truthful
+ * so an oversized Zephyr workload fails at link time instead of at runtime.
+ *
+ * This matches every DDR configuration, including the accelerator points, and
+ * RocketKU040OspiDDRConfig is the target default. The scratchpad variants --
+ * every config built with WithKU040Tweaks(ddr = false), which is that
+ * fragment's default -- have no memory port at all and take
+ * ku040-scratchpad.overlay instead; rb selects between the two from the config
+ * name, see SCRATCHPAD_CONFIG_NAMES in tools/rb/boards.py.
+ */
+
+&ram0 {
+	reg = <0x80000000 0x80000000>;
+	status = "okay";
+};

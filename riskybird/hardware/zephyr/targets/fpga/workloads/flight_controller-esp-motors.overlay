@@ -1,0 +1,30 @@
+/*
+ * Flight controller with the motors OFFLOADED to the ESP32-C6.
+ *
+ * Same sensor set as `--mode motors` -- it includes the same Phase 2 overlay --
+ * with one deliberate omission: there is NO `motors` alias and pwm0/pwm1 are NOT
+ * enabled. That is the whole point. main.cpp compiles the PWM actuator only when
+ * the `motors` alias exists, so this build contains no code path to a motor pin
+ * and CONFIG_PWM stays off, which means pwm_sifive_init() never writes pwmcfg and
+ * the four motor balls are never driven by this image at all.
+ *
+ * Why: ball F13 (motor4, pwm1 cmp1, J1_100) is dead as an output. A bare-metal
+ * bitstream with no Rocket and no Chipyard drove the four pads at 4/8/12/16 % and
+ * the gates read back M1=40 M2=80 M3=120 M4=0 per mille; the same ball configured
+ * as an input with a pullup read a solid 0, pulled there by the carrier's 10k
+ * gate pulldown. The net is intact, the output driver is not, and there is no RTL
+ * fix. The ESP reaches every gate through its own 47R, so it takes all four --
+ * which also ends the dual-driver contention on the three that did work.
+ *
+ * The duty commands leave on uart1 (E13/F14, bank 16). rb appends
+ * hardware/zephyr/fpga-esp-uart.overlay automatically for any shell that
+ * elaborates serial@10021000, and that is where the esp-uart alias and the
+ * 115200 come from.
+ *
+ * The console deliberately stays on uart0: unlike `--mode telem`, uart1 here
+ * carries binary frames, and pointing printk at it would interleave ASCII into
+ * the middle of one. The receiver's sliding window would resynchronise, but the
+ * frame would be lost and the console would be gone.
+ */
+
+#include "flight_controller-flow.overlay"

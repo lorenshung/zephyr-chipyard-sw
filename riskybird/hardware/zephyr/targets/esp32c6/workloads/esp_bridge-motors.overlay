@@ -1,0 +1,179 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * esp_bridge --mode motors: the WiFi bridge AND all four motor gates.
+ *
+ * THIS OVERLAY DRIVES THE GATES. esp_bridge.overlay -- the default mode -- does
+ * the opposite: it disables ledc0 and hogs these same four pins as pulled-down
+ * INPUTS. Both cannot be true at once, and neither can workloads/motor_safe
+ * (which is the gate probe every motor measurement in this investigation came
+ * from) or workloads/esp_motors (which is this, without the radio). One ESP,
+ * one image, four gates: choosing this one gives up the other three.
+ *
+ * WHY THIS EXISTS AT ALL. FPGA ball F13 is dead as an output -- a bare-metal
+ * bitstream driving the four pads at 4/8/12/16 % reads back M1=40 M2=80 M3=120
+ * M4=0 per mille at the gates, and the same ball configured as an input reads
+ * the carrier's 10k pulldown, so the net is intact and the IOB is not. Motors
+ * therefore live on the ESP. There is exactly one wire between the FPGA and the
+ * ESP, and an untethered flight needs both motor frames and telemetry on it, so
+ * the radio and the gates have to be in the same image. See
+ * docs/wireless-telemetry-bringup.md.
+ *
+ * Everything here is deliberately identical to the two overlays it merges, so
+ * that "the merged image behaves like the two it replaces" is checkable by
+ * diff rather than by reading:
+ *
+ *   from esp_bridge.overlay   uart0 on GPIO16/17 at 115200, console on usb_serial
+ *   from esp_motors.overlay   ledc0 channels 0-3 on GPIO21/20/23/22, 20 kHz
+ *
+ * PIN MAP, from the routed PCB (same as motor_4.overlay and esp_motors.overlay):
+ *   MOTOR1 = GPIO21   MOTOR2 = GPIO20   MOTOR3 = GPIO23   MOTOR4 = GPIO22
+ * Active-high into the SI2302 gate: duty 0 really is motor off.
+ *
+ * FPGA LINK, resolved from the riskybirdv3 PCB netlist and reconciled against
+ * hardware/zephyr/fpga-esp-uart.overlay:
+ *
+ *   ESP pin            net       JB1 pad   FPGA ball   TE0712 name   direction
+ *   U0TXD/GPIO16 (31)  /U0TXD    95        E13         J1_96         ESP -> FPGA rxd
+ *   U0RXD/GPIO17 (30)  /U0RXD    97        F14         J1_98         FPGA txd -> ESP
+ *
+ * The pad numbers and the J1_ numbers are off by one and both are correct: JB1
+ * pad N is the carrier footprint's numbering, J1_N is the TE0712 module's B2B
+ * pin naming. The FPGA ball is the unambiguous identifier.
+ *
+ * THE CONSOLE HAS TO MOVE off uart0, because uart0 IS the FPGA link: leave it
+ * there and every printk is transmitted into the flight controller's receiver.
+ * It goes to the native USB Serial/JTAG unit on the USB-C port -- the same cable
+ * used to flash.
+ */
+
+#include <zephyr/dt-bindings/pwm/pwm.h>
+#include <zephyr/dt-bindings/pinctrl/esp32c6-pinctrl.h>
+
+/ {
+	chosen {
+		zephyr,console = &usb_serial;
+		zephyr,shell-uart = &usb_serial;
+	};
+
+	aliases {
+		/* What the application opens. Named for what is on the other end
+		 * rather than for the controller. */
+		fpga-uart = &uart0;
+
+		/* The presence of pwm-motor0 is what switches the motor half of
+		 * workloads/esp_bridge/src/main.c on (HAVE_MOTORS). A build
+		 * without this alias contains no code path to a gate at all. */
+		pwm-motor0 = &pwm_motor0;
+		pwm-motor1 = &pwm_motor1;
+		pwm-motor2 = &pwm_motor2;
+		pwm-motor3 = &pwm_motor3;
+	};
+
+	pwmleds {
+		compatible = "pwm-leds";
+
+		/*
+		 * 50000 ns = 20 kHz. motor_1/motor_4.overlay carry 20000 in this
+		 * cell while their applications pass 50000 ns explicitly to
+		 * pwm_set_dt(), so the cell there is dead weight that disagrees
+		 * with the comment above it. Stated correctly here, matching
+		 * esp_motors.overlay.
+		 */
+		pwm_motor0: pwm_motor_gpio21 {
+			label = "MOTOR1";
+			pwms = <&ledc0 0 50000 PWM_POLARITY_NORMAL>;
+		};
+
+		pwm_motor1: pwm_motor_gpio20 {
+			label = "MOTOR2";
+			pwms = <&ledc0 1 50000 PWM_POLARITY_NORMAL>;
+		};
+
+		pwm_motor2: pwm_motor_gpio23 {
+			label = "MOTOR3";
+			pwms = <&ledc0 2 50000 PWM_POLARITY_NORMAL>;
+		};
+
+		pwm_motor3: pwm_motor_gpio22 {
+			label = "MOTOR4";
+			pwms = <&ledc0 3 50000 PWM_POLARITY_NORMAL>;
+		};
+	};
+};
+
+&pinctrl {
+	ledc0_default: ledc0_default {
+		group1 {
+			pinmux = <LEDC_CH0_GPIO21>,
+				 <LEDC_CH1_GPIO20>,
+				 <LEDC_CH2_GPIO23>,
+				 <LEDC_CH3_GPIO22>;
+			output-enable;
+		};
+	};
+
+	uart0_fpga: uart0_fpga {
+		group1 {
+			pinmux = <UART0_TX_GPIO16>;
+			output-high;
+		};
+		group2 {
+			pinmux = <UART0_RX_GPIO17>;
+			bias-pull-up;
+		};
+	};
+};
+
+&ledc0 {
+	pinctrl-0 = <&ledc0_default>;
+	pinctrl-names = "default";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	channel0@0 {
+		reg = <0x0>;
+		timer = <0>;
+	};
+
+	channel1@1 {
+		reg = <0x1>;
+		timer = <0>;
+	};
+
+	channel2@2 {
+		reg = <0x2>;
+		timer = <0>;
+	};
+
+	channel3@3 {
+		reg = <0x3>;
+		timer = <0>;
+	};
+};
+
+&uart0 {
+	status = "okay";
+	pinctrl-0 = <&uart0_fpga>;
+	pinctrl-names = "default";
+	/*
+	 * Must match hardware/zephyr/fpga-esp-uart.overlay's current-speed, and
+	 * changing it means changing both files in the same commit.
+	 *
+	 * 115200 was MEASURED on the bench (693 frames, zero CRC errors, zero
+	 * noise bytes), which settles the disagreement the other overlays still
+	 * record: esp_bridge.overlay claimed esp_uart had proved it,
+	 * fpga-esp-uart.overlay and esp_motors.overlay said to treat it as
+	 * unverified. It is verified. It is also the bottleneck this whole design
+	 * is shaped around -- 11520 B/s total, 700 B/s of it motor frames -- so
+	 * see the bandwidth table in docs/wireless-telemetry-bringup.md before
+	 * deciding a higher telemetry rate is free.
+	 */
+	current-speed = <115200>;
+};
+
+/* Carries the console, the ESP's own RBLINK status line, and the flashing. */
+&usb_serial {
+	status = "okay";
+};

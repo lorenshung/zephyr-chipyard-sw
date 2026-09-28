@@ -1,0 +1,100 @@
+/*
+ * ESP32-C6 as a WiFi modem for the FPGA flight controller.
+ *
+ * Wiring, resolved from the riskybirdv3 PCB netlist rather than assumed
+ * (hardware/pcb/riskybirdv3_base/riskybirdv3.kicad_pcb) and reconciled against
+ * the FPGA side in hardware/zephyr/fpga-esp-uart.overlay:
+ *
+ *   ESP pin            net       JB1 pad   FPGA ball   TE0712 name   direction
+ *   U0TXD/GPIO16 (31)  /U0TXD    95        E13         J1_96         ESP -> FPGA rxd
+ *   U0RXD/GPIO17 (30)  /U0RXD    97        F14         J1_98         FPGA txd -> ESP
+ *
+ * THE PAD NUMBERS AND THE J1_ NUMBERS ARE OFF BY ONE, AND BOTH ARE CORRECT.
+ * They are different reference frames for the same physical pin: JB1 pad N is
+ * the carrier footprint's own numbering, J1_N is the TE0712 module's B2B pin
+ * naming. `JB1 95`, `E13` and `J1_96` are three names for one net; likewise
+ * `JB1 97`, `F14` and `J1_98`. Do not "fix" one to agree with the other -- the
+ * FPGA ball is the unambiguous identifier and the one to check against.
+ *
+ * Direction is the thing to get right, and getting it wrong is silent: the
+ * ESP's transmitter drives the FPGA's receiver. GPIO16 is an output here.
+ *
+ * THE CONSOLE HAS TO MOVE. On this board `zephyr,console` is uart0, which is
+ * exactly the controller this workload needs for the FPGA link -- leave it
+ * there and every printk is transmitted into the flight controller's receiver,
+ * which at best corrupts the command channel and at worst is parsed as one.
+ * The C6 has a native USB Serial/JTAG unit on the USB-C port (it is what
+ * esptool already talks to, see samples/riskybird/PROGRAMMING.md: it enumerates
+ * as 303a:1001 -> /dev/ttyACM*), so the console moves there and costs nothing.
+ */
+
+#include <zephyr/dt-bindings/pinctrl/esp32c6-pinctrl.h>
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/ {
+	chosen {
+		/* Console off uart0, onto the USB-C serial/JTAG unit. */
+		zephyr,console = &usb_serial;
+		zephyr,shell-uart = &usb_serial;
+	};
+
+	aliases {
+		/* What the application opens. Named for what is on the other end
+		 * rather than for the controller, so the workload does not have to
+		 * care which UART a future board revision uses. */
+		fpga-uart = &uart0;
+	};
+};
+
+/*
+ * The ESP and FPGA share each motor gate net through their own 47R resistor.
+ * Keep the ESP side as pulled-down inputs while the FPGA owns the motors: if
+ * both sides drive, the 47R/47R divider parks the gate near half rail.
+ */
+&gpio0 {
+	riskybird_motor_safe_hog: riskybird-motor-safe-hog {
+		gpio-hog;
+		gpios = <21 GPIO_PULL_DOWN>,
+			<20 GPIO_PULL_DOWN>,
+			<23 GPIO_PULL_DOWN>,
+			<22 GPIO_PULL_DOWN>;
+		input;
+		line-name = "RiskyBird shared motor nets";
+	};
+};
+
+&ledc0 {
+	status = "disabled";
+};
+
+&usb_serial {
+	status = "okay";
+};
+
+&pinctrl {
+	uart0_fpga: uart0_fpga {
+		group1 {
+			pinmux = <UART0_TX_GPIO16>;
+			output-high;
+		};
+		group2 {
+			pinmux = <UART0_RX_GPIO17>;
+			bias-pull-up;
+		};
+	};
+};
+
+&uart0 {
+	status = "okay";
+	pinctrl-0 = <&uart0_fpga>;
+	pinctrl-names = "default";
+	/*
+	 * 115200 is what workloads/esp_uart proved the link carries in both
+	 * directions. It is also the bottleneck: a ~140-byte telemetry line at
+	 * 50 Hz is 7 kB/s against the 11.5 kB/s this rate provides, so there is
+	 * about 40% of headroom for the uplink and nothing more. Raising both
+	 * ends together is the cheap lever if telemetry rate needs to go up --
+	 * this is a short on-PCB trace between two chips we control.
+	 */
+	current-speed = <115200>;
+};

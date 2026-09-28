@@ -1,0 +1,28 @@
+/ {
+	aliases {
+		pwm-motor0 = &motor1_pwm;
+		pwm-motor1 = &motor2_pwm;
+		pwm-motor2 = &motor3_pwm;
+		pwm-motor3 = &motor4_pwm;
+	};
+
+	pwm-motors {
+		compatible = "pwm-leds";
+
+		motor1_pwm: motor1-pwm {
+			pwms = <&pwm0 1 50000>;
+		};
+
+		motor2_pwm: motor2-pwm {
+			pwms = <&pwm0 2 50000>;
+		};
+
+		motor3_pwm: motor3-pwm {
+			pwms = <&pwm0 3 50000>;
+		};
+
+		motor4_pwm: motor4-pwm {
+			pwms = <&pwm1 1 50000>;
+		};
+	};
+};

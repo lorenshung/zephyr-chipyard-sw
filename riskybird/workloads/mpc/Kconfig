@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "RiskyBird MPC workload"
+
+choice RB_MPC_INPUT
+	prompt "MPC input transport"
+	default RB_MPC_INPUT_REPLAY
+
+config RB_MPC_INPUT_REPLAY
+	bool "Deterministic compiled-in states"
+
+config RB_MPC_INPUT_HIL
+	bool "Binary UART HIL protocol"
+
+config RB_MPC_INPUT_ROSE
+	bool "RoSE bridge closed-loop protocol"
+
+endchoice
+
+config RB_MPC_REPLAY_PERIOD_MS
+	int "Replay solve period"
+	default 100
+	range 10 10000
+	depends on RB_MPC_INPUT_REPLAY
+
+rsource "../../hardware/zephyr/Kconfig.fpga"
+
+source "Kconfig.zephyr"

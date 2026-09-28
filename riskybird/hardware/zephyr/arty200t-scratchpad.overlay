@@ -1,0 +1,11 @@
+/*
+ * Scratchpad XC7A200T shells -- anything built with WithArty200TTweaks(ddr =
+ * false). No memory port and no MIG; main memory is the 32 KiB mbus scratchpad
+ * at 0x8000_0000 and nothing else. Keep this size truthful so an oversized
+ * workload fails at link time rather than running off the end on hardware.
+ */
+
+&ram0 {
+	reg = <0x80000000 0x8000>;
+	status = "okay";
+};

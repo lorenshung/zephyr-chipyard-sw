@@ -1,0 +1,13 @@
+/*
+ * Trenz TE0712 carrying the XC7A200T, DDR3-backed shells.
+ *
+ * The memory map is identical to the 100T variant: same carrier, same MIG
+ * geometry, same 1 GiB region at 0x8000_0000. Kept as its own file rather than
+ * shared so that if the 200T SOM turns out to carry a different DDR3 device or
+ * size, only this file changes.
+ */
+
+&ram0 {
+	reg = <0x80000000 0x40000000>;
+	status = "okay";
+};

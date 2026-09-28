@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description: RiskyBird PMW3901 board-wiring contract
+
+compatible: "riskybird,pmw3901"
+
+properties:
+  spi-bus:
+    type: phandle
+    required: true
+    description: SPI controller used for PMW3901 register transfers
+
+  cs-gpios:
+    type: phandle-array
+    required: true
+
+  reset-gpios:
+    type: phandle-array
+    required: true
+
+  led-gpios:
+    type: phandle-array
+    required: true

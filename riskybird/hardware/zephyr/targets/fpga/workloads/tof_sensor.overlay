@@ -1,0 +1,15 @@
+/* Legacy single-VL53L0X diagnostic node on the shared FPGA I2C bus. */
+
+&i2c0 {
+	vl53l0x: distance-sensor@29 {
+		compatible = "st,vl53l0x";
+		reg = <0x29>;
+		status = "okay";
+	};
+};
+
+/ {
+	aliases {
+		vl53l0x = &vl53l0x;
+	};
+};

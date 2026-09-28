@@ -1,0 +1,27 @@
+/*
+ * Corrections for RiskyBird FPGA shells elaborated without the I2C controller.
+ *
+ * hardware/zephyr/fpga-common.overlay describes the OSPI-periphery shells,
+ * where i2c@10040000 takes PLIC source 1 and the UART takes source 2. A shell
+ * built without that periphery has no I2C node at all and its UART moves down
+ * to source 1 -- confirmed across every elaborated config in
+ * backends/chipyard/fpga/generated-src, where the presence of i2c@10040000 and
+ * a UART on source 2 are the same fact stated twice.
+ *
+ * Applied after fpga-common.overlay, so these properties win. Leaving it off a
+ * no-I2C shell wires the console interrupt to a source nothing drives, and the
+ * console then never drains.
+ */
+
+&uart0 {
+	interrupts = <1 1>;
+};
+
+/*
+ * The bmi088 nodes fpga-common.overlay hangs off this bus go with it. Nothing
+ * in the shell decodes 0x10040000, so leaving the controller enabled would
+ * bind a driver to an address that is not there.
+ */
+&i2c0 {
+	status = "disabled";
+};

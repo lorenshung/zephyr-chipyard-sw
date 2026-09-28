@@ -1,0 +1,18 @@
+/*
+ * Flight controller, Phase 5: autonomous short-hop flight. PROPELLERS OFF until
+ * the bench thrust test in docs/flight-on-fpga.md has passed.
+ *
+ * Hardware-identical to `motors`: the same four PWM outputs, the same channel
+ * map, the same period. What changes is entirely in the build definitions the
+ * mode carries (ROSE_AUTOFLIGHT, ROSE_BATT_SENSE, ROSE_FLIGHTLOG -- see
+ * tools/rb/boards.py), which is why this file only pulls the motor wiring in
+ * rather than restating any of it.
+ *
+ * Kept as its own overlay rather than reusing `motors` directly so the two
+ * modes stay distinguishable at the command line: `--mode motors` is a bench
+ * sweep that drives each output in turn, `--mode autoflight` compiles an
+ * arming gate and a flight profile. Those deserve different names even where
+ * the device tree is the same.
+ */
+
+#include "flight_controller-motors.overlay"

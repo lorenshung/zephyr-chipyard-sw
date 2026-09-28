@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "RiskyBird Zephyr workload"
+
+rsource "Kconfig.fpga"
+
+source "Kconfig.zephyr"

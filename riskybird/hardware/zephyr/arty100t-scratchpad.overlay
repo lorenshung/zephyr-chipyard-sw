@@ -1,0 +1,16 @@
+/*
+ * The scratchpad Arty100T shells -- RocketArty100TOspiSpadConfig and anything
+ * else built with WithArty100TTweaks(ddr = false) -- have no memory port and no
+ * MIG. Main memory is the 32 KiB mbus scratchpad at 0x8000_0000 and nothing
+ * else, so keep this size truthful: an oversized workload must fail at link
+ * time rather than run off the end of the scratchpad on hardware.
+ *
+ * For reference, the images recorded in docs/history/verification.md against a 32 KiB
+ * map: state/replay 19,168 B (58.50%), state/bmi088 23,824 B (72.71%),
+ * mpc/replay 32,000 B (97.66%).
+ */
+
+&ram0 {
+	reg = <0x80000000 0x8000>;
+	status = "okay";
+};

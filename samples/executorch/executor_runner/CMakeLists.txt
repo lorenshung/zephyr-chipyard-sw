@@ -107,7 +107,7 @@ option(MB_XNNPACK_SPIN_THREADPOOL
 # one (riskybird's backends/modelblaster). The default below finds it in that
 # layout, and MODELBLASTER_DIR overrides it for any other -- including a
 # standalone clone of this backend, where it is simply absent.
-set(MODELBLASTER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../modelblaster"
+set(MODELBLASTER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../modelblaster"
     CACHE PATH "ModelBlaster checkout, for the spin-wait pthreadpool override")
 if(MB_XNNPACK_SPIN_THREADPOOL)
   set(_MB_SPIN_INJECT

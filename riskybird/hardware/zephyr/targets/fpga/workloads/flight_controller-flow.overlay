@@ -1,0 +1,36 @@
+/*
+ * Flight controller, Phase 2: state estimation plus optical flow. Still no actuation.
+ *
+ * Builds on the Phase 1 overlay rather than restating it, so the IMU rates and the 400 kHz bus
+ * cannot drift between phases.
+ */
+
+#include "flight_controller.overlay"
+
+/ {
+	aliases {
+		/*
+		 * Which controller the PMW3901 hangs off. flow.c falls back to the node label `spi2`
+		 * (the ESP32-C6's) when this alias is absent, so naming spi0 here is what moves the
+		 * optical flow onto this carrier.
+		 *
+		 * NOT the `flow` alias: that one selects RoSE's VIRTUAL flow device and drives
+		 * HAVE_FLOW in main.cpp, which is a spike co-sim path. The real PMW3901 is selected by
+		 * the ROSE_FLOW CMake knob and talks to this bus directly.
+		 *
+		 * The chip-select must match hardware/zephyr/targets/fpga/workloads/pmw3901_test.overlay,
+		 * which puts it on gpio0 pin 0 -- so this build needs CS_GPIO_PIN=0, where the ESP
+		 * default is 19. `--mode flow` sets it, and ROSE_FLOW=1 with it (FLOW_DEFINES in
+		 * tools/rb/boards.py); this alias alone compiles no flow path.
+		 */
+		flow-spi = &spi0;
+	};
+};
+
+&spi0 {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};

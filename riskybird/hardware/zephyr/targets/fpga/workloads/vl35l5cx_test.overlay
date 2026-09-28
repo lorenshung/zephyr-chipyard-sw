@@ -1,0 +1,37 @@
+/*
+ * VL53L5CX ranging devices on the shared FPGA I2C bus, at their reassigned addresses.
+ *
+ * One node per slot of vl35l5cx_test's array that can hold a VL53L5CX: slots 0-2, the side
+ * headers on ADS7128 GPIO1-3. Slot 3 (GPIO6, 0x34) is the down VL53L1X, which the VL53L5CX
+ * driver cannot range, so it has no node here and the workload skips it. The fifth slot (a
+ * sensor wired straight to the bus) is unused: with every XSHUT held low no VL53 part answers.
+ * Keep in step with hardware/zephyr/targets/esp32c6/workloads/vl35l5cx_test.overlay.
+ */
+
+&i2c0 {
+	vl53l5cx0: distance-sensor@31 {
+		compatible = "st,vl53l5cx";
+		reg = <0x31>;
+		status = "okay";
+	};
+
+	vl53l5cx1: distance-sensor@32 {
+		compatible = "st,vl53l5cx";
+		reg = <0x32>;
+		status = "okay";
+	};
+
+	vl53l5cx2: distance-sensor@33 {
+		compatible = "st,vl53l5cx";
+		reg = <0x33>;
+		status = "okay";
+	};
+};
+
+/ {
+	aliases {
+		tof0 = &vl53l5cx0;
+		tof1 = &vl53l5cx1;
+		tof2 = &vl53l5cx2;
+	};
+};

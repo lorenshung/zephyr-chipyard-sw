@@ -1,0 +1,6 @@
+/* Arty A7-100T uses the 1 GiB DDR-backed TileLink memory region. */
+
+&ram0 {
+	reg = <0x80000000 0x40000000>;
+	status = "okay";
+};

@@ -1,0 +1,16 @@
+/*
+ * Flight controller telemetry over the ESP link, with no application changes
+ * required: printk's console is the FPGA's second UART instead of the tethered
+ * FTDI console.
+ *
+ * Keep the Phase 1 sensor setup intact and override only the chosen UARTs.
+ */
+
+#include "flight_controller.overlay"
+
+/ {
+	chosen {
+		zephyr,console = &uart1;
+		zephyr,shell-uart = &uart1;
+	};
+};

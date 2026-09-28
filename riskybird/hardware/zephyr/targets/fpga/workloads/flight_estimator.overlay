@@ -1,0 +1,77 @@
+/*
+ * Flight controller, Phase 1: state estimation on the bench, no actuation.
+ *
+ * Only the IMU is exposed. The application selects its subsystems from device-tree aliases --
+ * HAVE_FLOW/HAVE_TOF/HAVE_BARO in main.cpp, plus DT_NODE_EXISTS(DT_ALIAS(motors)) around the
+ * whole PWM actuator block -- so declaring nothing else here compiles the optical flow, the
+ * down-ToF, the barometer, the side-ToF bumper and every motor output OUT of the image. That is
+ * a stronger guarantee than a runtime disarm: there is no code path to a motor in this build.
+ *
+ * Sensors are added one alias at a time as each is verified. See docs/flight-on-fpga.md.
+ */
+
+&i2c0 {
+	/*
+	 * 400 kHz, not the 100 kHz that hardware/zephyr/fpga-drone.overlay sets.
+	 *
+	 * This is a hard requirement of the control rate, not a tuning preference. Each control
+	 * iteration reads the accelerometer and the gyroscope over I2C: roughly 90 bits of bus
+	 * traffic each once addressing, register selection, the repeated START and the ACK bits
+	 * are counted, so ~180 bits per iteration.
+	 *
+	 *   100 kHz -> ~1.8 ms per iteration -> ~550 Hz ceiling, BELOW the 1 kHz loop
+	 *   400 kHz -> ~0.45 ms per iteration -> ~2.2 kHz ceiling, with margin
+	 *
+	 * At 100 kHz the loop cannot reach its rate no matter how fast Rocket is, and the failure
+	 * looks like a slow controller rather than a slow bus. 400 kHz is what the ESP board runs
+	 * (I2C_BITRATE_FAST) and is within spec for every device on this bus -- BMI088 and ADS7128
+	 * are rated to 1 MHz, the VL53 parts to 400 kHz.
+	 */
+	clock-frequency = <400000>;
+
+	/*
+	 * Match the rates the flight build actually used. fpga-drone.overlay asks for 200 Hz on
+	 * both, which was fine for a sensor-liveness check and is not fine here: a 1 kHz control
+	 * loop fed by a 200 Hz gyro is running five iterations on each sample, so the estimator
+	 * integrates stale rate data and the derivative terms see quantised steps.
+	 *
+	 * 800 Hz accel / 1000 Hz gyro (116 Hz bandwidth) are the ESP flight-build values.
+	 */
+	accelerometer@18 {
+		accel-hz = "800";
+	};
+
+	gyroscope@68 {
+		gyro-hz = "1000_116";
+	};
+
+	/*
+	 * Down-facing VL53L1X, declared at 0x30 rather than its power-on 0x29.
+	 *
+	 * The part boots at 0x29 and main.cpp's vl53l1x_readdress_down() moves it
+	 * to VL53L1X_DOWN_ADDR before the ST driver's deferred init runs, so this
+	 * reg MUST equal that constant (0x30) or the driver talks to nothing.
+	 *
+	 * Declaring the node is what compiles the altitude path in at all, and it
+	 * does two things at once: `st,vl53l1x` being status-okay pulls in
+	 * board_sensor_init(), which is what raises this sensor's XSHUT through
+	 * ADS7128 GPIO6, and the `tof` alias below sets HAVE_TOF. Without the node
+	 * the estimator ran with tofv=0 on every sample and z dead-reckoned off
+	 * accel -- 11 m of drift over 500 samples -- which reads as an estimator
+	 * fault and is a missing device-tree entry.
+	 *
+	 * Channel 6 is not a guess: the schematic nets ADS7128 GPIO6 to U9, the
+	 * down VL53L1X, and bootup_check brings it up on that channel and reads
+	 * back id 0xeacc.
+	 */
+	vl53l1x: vl53l1x@30 {
+		compatible = "st,vl53l1x";
+		reg = <0x30>;
+		status = "okay";
+	};
+};
+/ {
+	aliases {
+		tof = &vl53l1x;
+	};
+};

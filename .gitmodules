@@ -12,8 +12,8 @@
 	branch = zephyr
 [submodule "zephyr_ws/zephyr"]
 	path = zephyr_ws/zephyr
-	url = https://github.com/ucb-bar/zephyr.git
-	branch = riskybird-v3
+	url = git@github.com:lorenshung/zephyr.git
+	branch = migration/unified-draft-20260927
 [submodule "tools/pyuartsi"]
 	path = tools/pyuartsi
 	url = https://github.com/ucb-bar/pyuartsi.git
@@ -34,3 +34,8 @@
 	path = third-party/micro_ros_zephyr_module
 	url = https://github.com/ucb-bar/micro_ros_zephyr_module.git
 	branch = jazzy
+
+[submodule "modelblaster"]
+	path = modelblaster
+	url = git@github.com:lorenshung/ModelBlaster.git
+	branch = migration/unified-draft-20260927

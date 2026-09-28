@@ -1,0 +1,17 @@
+/*
+ * RAM size for the KU040 shells built with WithKU040Tweaks(ddrControllers = 1):
+ * one of the two DDR4 components, so 1 GiB at 0x8000_0000 rather than 2 GiB.
+ *
+ * WithKU040DDRMem sets ExtMemSize = 0x40000000 * controllers, so a
+ * single-controller config presents exactly this. Using ku040.overlay (2 GiB)
+ * against such a shell would let an oversized image link and then run off the
+ * end of real memory on hardware.
+ *
+ * Pair with fpga-common.overlay, which handles the console, the one-hart trim
+ * and the PLIC source count.
+ */
+
+&ram0 {
+	reg = <0x80000000 0x40000000>;
+	status = "okay";
+};

@@ -1,0 +1,21 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Legacy single-VL53L0X diagnostic. The target owns the shared I2C wiring.
+ */
+
+&i2c0 {
+	/* VL53L0X Time-of-Flight sensor at I2C address 0x29 */
+	vl53l0x: vl53l0x@29 {
+		compatible = "st,vl53l0x";
+		reg = <0x29>;
+		status = "okay";
+	};
+};
+
+/ {
+	/* Define aliases for easier access in code */
+	aliases {
+		vl53l0x = &vl53l0x;
+	};
+};

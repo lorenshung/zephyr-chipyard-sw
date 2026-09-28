@@ -1,0 +1,100 @@
+/*
+ * Put the flight controller's console -- and therefore its telemetry line -- on
+ * uart1, ON TOP OF a mode that is already sending motor duty frames there.
+ *
+ * WHY THIS IS A SEPARATE FILE AND NOT PART OF A MODE
+ * --------------------------------------------------
+ * `flight_controller --mode telem` moves the console to uart1 and drives no
+ * motor pin. `--mode esp-motors` drives duty frames out of uart1 and keeps the
+ * console on uart0 (the FTDI), deliberately, so that ASCII cannot land in the
+ * middle of a binary frame. Those are the two modes that exist, and NEITHER of
+ * them gives an untethered drone telemetry: the first cannot fly (ball F13 is
+ * dead, so the FPGA cannot drive motor4 and the motors live on the ESP), and the
+ * second puts its telemetry on a cable that is not attached in flight.
+ *
+ * Applying this overlay on top of `--mode esp-motors` produces the third
+ * combination -- motor frames AND telemetry on the one wire -- which is the only
+ * arrangement in which a flying drone has a dashboard. The ESP side that decodes
+ * both is `esp_bridge --mode motors`. See docs/wireless-telemetry-bringup.md.
+ *
+ * It is a standalone overlay rather than a fourth mode because adding a mode
+ * means editing tools/rb/boards.py, and because this composes: it is one line of
+ * devicetree that can be laid over ANY mode that already owns uart1.
+ *
+ *   RB_CMAKE_ARGS="-DEXTRA_DTC_OVERLAY_FILE=$PWD/hardware/zephyr/fpga-esp-telem-on-uart1.overlay \
+ *                  -DROSE_TELEM_DIV=80" \
+ *   rb build flight_controller --target arty200t --mode esp-motors \
+ *     --config RocketArty200TDroneFullDDRDmaFlowConfig
+ *
+ * EXTRA_DTC_OVERLAY_FILE is applied AFTER DTC_OVERLAY_FILE
+ * (zephyr/cmake/modules/dts.cmake:86-89), which is what lets this override the
+ * `chosen` node the mode overlay already set.
+ *
+ *
+ * WHAT IT COSTS, AND WHY ROSE_TELEM_DIV IS NOT OPTIONAL HERE
+ * ----------------------------------------------------------
+ * The link is 115200 8N1 = 11520 B/s. Duty frames take 14 B x 50 Hz = 700 B/s
+ * (6.1 %). Everything else on the wire is the console.
+ *
+ * The FPGA's serial driver is POLLED on this carrier (CONFIG_UART_INTERRUPT_DRIVEN
+ * is off), so printk busy-waits: every byte the control loop puts on this wire is
+ * charged to the control loop as stall.
+ *
+ * The line lengths are counted from the format strings in main.cpp, rendered with
+ * realistic values, not estimated:
+ *
+ *   core telemetry line ("flight_controller: it=... |a|=...")   190 B  16.5 ms
+ *   + the "  flow: ..." line that ROSE_FLOW=1 adds                96 B   8.3 ms
+ *   one telemetry iteration in --mode esp-motors                 286 B  24.8 ms
+ *
+ * (The ground station's optional v1.1 tail -- x/y/vx/vy/vz/zsp/vbat/st -- would
+ * take the core line to ~262 B. THIS BUILD DOES NOT EMIT IT; see the field list
+ * in docs/wireless-telemetry-bringup.md.)
+ *
+ *   rate    bytes/s   link used   loop stalled   worst added frame gap
+ *   25 Hz     7150        62 %        62 %           24.8 ms
+ *   10 Hz     2860        25 %        25 %           24.8 ms
+ *    5 Hz     1430        12 %        12 %           24.8 ms
+ *
+ * The worst-case gap is what the ESP failsafe has to survive, and it does not
+ * shrink with rate -- one line is one line. Budget: 20 ms frame period + up to
+ * 35 ms of control loop + 24.8 ms of telemetry write = ~80 ms against a 120 ms
+ * failsafe. That holds. What DOES scale with rate is how much control loop is
+ * left, and at 25 Hz nearly two thirds of it is gone.
+ *
+ * So pass a divisor. At the ~770 Hz the PID cascade actually achieves:
+ *
+ *   ROSE_TELEM_DIV=80   ->  ~9.6 Hz   RECOMMENDED for an offloaded flight build
+ *   ROSE_TELEM_DIV=150  ->  ~5.1 Hz   when loop rate matters more than the view
+ *   ROSE_TELEM_DIV=30   ->  ~25 Hz    what --mode telem uses; too fast WITH motors
+ *
+ * The default if nothing is passed is ROSE_TELEM_DIV=10 (main.cpp:138), i.e.
+ * ~77 Hz and ~22 kB/s -- nearly twice what the wire can carry. It would not
+ * merely be slow; the control loop would spend all its time in uart_poll_out,
+ * and the duty-frame stream would be starved along with everything else. PASS
+ * THE DIVISOR.
+ *
+ *
+ * WHAT YOU GIVE UP
+ * ----------------
+ * The FTDI console goes quiet. Every diagnostic the flight controller prints --
+ * boot banners, sensor failures, the arming gate's reasons -- now leaves over the
+ * radio, so a radio that is not up means a drone with no visible console at all.
+ * Bring the link up and confirm telemetry is flowing BEFORE relying on this; the
+ * ordered procedure in docs/wireless-telemetry-bringup.md does exactly that.
+ *
+ * A stray printk from a thread other than the control loop can also land in the
+ * middle of a duty frame. That is survivable by construction -- the receiver's
+ * sliding window resynchronises within one frame and the CRC rejects the damaged
+ * one -- and six consecutive damaged frames would be needed to reach the 120 ms
+ * failsafe. It is still a real source of the `crc=` count the ESP reports, so a
+ * non-zero crc= in an offloaded build is expected here and is NOT by itself the
+ * wrong-baud-rate signature (that one shows up as `noise=` climbing).
+ */
+
+/ {
+	chosen {
+		zephyr,console = &uart1;
+		zephyr,shell-uart = &uart1;
+	};
+};

@@ -1,0 +1,9 @@
+/* The target owns BMI088 addresses and pins; this diagnostic selects rates. */
+
+&bmi088_accel {
+	accel-hz = "800";
+};
+
+&bmi088_gyro {
+	gyro-hz = "1000_116";
+};

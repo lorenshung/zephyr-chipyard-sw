@@ -1,0 +1,24 @@
+/*
+ * PMW3901 wiring for the whole-board bootup check.
+ *
+ * Identical to pmw3901_test.overlay and sensor_check.overlay: the flow sensor's
+ * SPI bus plus the three control bits on the GPIO block, with chip-select driven
+ * in software because the sifive controller's automatic CS does not hold across
+ * the multi-byte register transactions the driver issues.
+ *
+ * Every other peripheral this workload touches is already declared by
+ * fpga-drone.overlay -- the I2C bus, the BMI088 pair and their aliases -- so
+ * nothing here re-declares them.
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/ {
+	riskybird_pmw3901: pmw3901-wiring {
+		compatible = "riskybird,pmw3901";
+		spi-bus = <&spi0>;
+		cs-gpios = <&gpio0 0 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&gpio0 1 GPIO_ACTIVE_LOW>;
+		led-gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
+	};
+};

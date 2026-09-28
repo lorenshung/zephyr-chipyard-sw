@@ -1,0 +1,6 @@
+sample:
+  description: RiskyBird target-independent I2C address scanner
+  name: i2c scanner
+common:
+  tags: i2c riskybird
+tests: {}

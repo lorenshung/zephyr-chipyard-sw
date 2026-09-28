@@ -1,0 +1,60 @@
+/* RiskyBird ESP32-C6 target configuration. */
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Overlay for 2 motor PWMs on ESP32C6 (custom PCB).
+ * MOTOR1 is GPIO21 and MOTOR2 is GPIO20 on the routed RiskyBird PCB.
+ * 20 kHz PWM (same as working single-motor setup).
+ */
+
+#include <zephyr/dt-bindings/pwm/pwm.h>
+
+/ {
+	aliases {
+		pwm-0 = &ledc0;
+		pwm-motor0 = &pwm_motor0;
+		pwm-motor1 = &pwm_motor1;
+	};
+
+	pwmleds {
+		compatible = "pwm-leds";
+
+		pwm_motor0: pwm_motor_gpio21 {
+			label = "MOTOR1";
+			pwms = <&ledc0 0 20000 PWM_POLARITY_NORMAL>;
+		};
+
+		pwm_motor1: pwm_motor_gpio20 {
+			label = "MOTOR2";
+			pwms = <&ledc0 1 20000 PWM_POLARITY_NORMAL>;
+		};
+	};
+};
+
+&pinctrl {
+	ledc0_default: ledc0_default {
+		group1 {
+			pinmux = <LEDC_CH0_GPIO21>,
+				 <LEDC_CH1_GPIO20>;
+			output-enable;
+		};
+	};
+};
+
+&ledc0 {
+	pinctrl-0 = <&ledc0_default>;
+	pinctrl-names = "default";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	channel0@0 {
+		reg = <0x0>;
+		timer = <0>;
+	};
+
+	channel1@1 {
+		reg = <0x1>;
+		timer = <0>;
+	};
+};

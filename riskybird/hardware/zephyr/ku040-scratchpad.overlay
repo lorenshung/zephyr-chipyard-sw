@@ -1,0 +1,17 @@
+/*
+ * The scratchpad KU040 shells -- RocketKU040Config, RocketKU040OspiConfig,
+ * RocketKU040DroneLogicConfig, NoCoresKU040Config, and the NoLoopConv
+ * accelerator probe -- are the ones built with WithKU040Tweaks(ddr = false),
+ * which is that fragment's default. They place no MIG and have no memory port
+ * at all: main memory is the 32 KiB mbus scratchpad at 0x8000_0000 and nothing
+ * else, so keep this size truthful. An oversized workload must fail at link
+ * time rather than run off the end of the scratchpad on hardware.
+ *
+ * RocketKU040Config is the FTDI bring-up shell: huge Rocket, the two UARTs and
+ * JTAG, no camera and no I2C. See docs/ku040-ftdi-bringup.md.
+ */
+
+&ram0 {
+	reg = <0x80000000 0x8000>;
+	status = "okay";
+};

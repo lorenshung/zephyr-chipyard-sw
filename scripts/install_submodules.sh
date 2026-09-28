@@ -153,74 +153,8 @@ main() {
     log "gym-pybullet-drones installed successfully"
   fi
 
-  # Initialize west workspace
-  log "Initializing west workspace..."
-  if ! cd zephyr_ws/zephyr; then
-    log_error "Failed to cd to zephyr_ws/zephyr"
-    safe_exit 1
-  fi
-  
-  # Check if west is already initialized
-  WEST_INITIALIZED=false
-  if [[ -d .west ]] || [[ -d ../.west ]] || [[ -d ../../.west ]]; then
-    # Check if west can list projects (indicates it's initialized)
-    if ${CONDA_RUN} west list >/dev/null 2>&1; then
-      WEST_INITIALIZED=true
-      log "West workspace already initialized, skipping west init"
-    fi
-  fi
-  
-  if [[ "$WEST_INITIALIZED" == "false" ]]; then
-    if [[ -f .west/config ]]; then
-      log "West config file exists, skipping west init"
-    else
-      log "Initializing west workspace..."
-      # Try to initialize, but handle the case where it's already initialized
-      if ! eval "${CONDA_RUN} west init -l ." >> "${LOG_FILE}" 2>&1; then
-        # Check if the error is because it's already initialized
-        if grep -q "already initialized" "${LOG_FILE}" 2>/dev/null; then
-          log "West workspace was already initialized (detected from error message), continuing..."
-        else
-          log_error "Failed to initialize west workspace"
-          log_error "Check ${LOG_FILE} for details"
-          safe_exit 1
-        fi
-      fi
-    fi
-    
-    # Set manifest file if not already set
-    if [[ ! -f .west/config ]] || ! grep -q "west-riscv.yml" .west/config 2>/dev/null; then
-      log "Configuring west manifest file..."
-      if ! eval "${CONDA_RUN} west config manifest.file west-riscv.yml" >> "${LOG_FILE}" 2>&1; then
-        log_error "Failed to set west manifest file"
-        log_error "Check ${LOG_FILE} for details"
-        safe_exit 1
-      fi
-    fi
-  fi
-  
-  # Update west workspace
-  log "Updating west workspace..."
-  if ! eval "${CONDA_RUN} west update" >> "${LOG_FILE}" 2>&1; then
-    # Check if the error is about specific projects failing (non-fatal)
-    if grep -q "ERROR: update failed for project" "${LOG_FILE}" 2>/dev/null; then
-      WARNINGS+=("Some west projects failed to update (check ${LOG_FILE} for details). This may be non-critical - the workspace may still be usable.")
-      log_error "Some west projects failed to update - continuing with installation"
-      log "You can try updating specific projects later with: conda run -n zephyr west update <project-name>"
-      log "Or update all projects individually if needed"
-    else
-      log_error "Failed to update west workspace"
-      log_error "Check ${LOG_FILE} for details"
-      safe_exit 1
-    fi
-  else
-    log "West workspace updated successfully"
-  fi
-  
-  if ! cd "${REPO_ROOT}"; then
-    log_error "Failed to return to repo root"
-    safe_exit 1
-  fi
+  # Use the single immutable RiskyBird workspace manifest.
+  run_cmd "${CONDA_RUN} bash scripts/bootstrap-riskybird.sh"
 
   # Initialize drone_control submodule
   log "Initializing drone_control submodule..."

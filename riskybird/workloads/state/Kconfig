@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "RiskyBird state-estimation workload"
+
+choice RB_STATE_SOURCE
+	prompt "IMU input source"
+	default RB_STATE_SOURCE_REPLAY
+
+config RB_STATE_SOURCE_REPLAY
+	bool "Deterministic compiled-in replay"
+
+config RB_STATE_SOURCE_BMI088
+	bool "BMI088 over the FPGA I2C controller"
+
+endchoice
+
+config RB_STATE_RATE_HZ
+	int "Estimator update frequency"
+	default 200
+	range 10 1000
+
+config RB_STATE_BETA_MILLI
+	int "Madgwick beta, in thousandths"
+	default 100
+	range 0 2000
+
+config RB_STATE_CALIBRATION_SAMPLES
+	int "Stationary gyro samples used for BMI088 bias calibration"
+	default 100
+	range 0 2000
+	depends on RB_STATE_SOURCE_BMI088
+
+rsource "../../hardware/zephyr/Kconfig.fpga"
+
+source "Kconfig.zephyr"

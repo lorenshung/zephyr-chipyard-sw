@@ -9,7 +9,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 export ZEPHYR_BASE="${REPO_ROOT}/zephyr_ws/zephyr"
 
 # Set Zephyr SDK installation directory
-export ZEPHYR_SDK_INSTALL_DIR="${REPO_ROOT}/tools-manual/zephyr-sdk-1.0.0-beta1"
+export ZEPHYR_SDK_INSTALL_DIR="${ZEPHYR_SDK_INSTALL_DIR:-${REPO_ROOT}/tools-manual/zephyr-sdk-1.0.0-beta1}"
 
 # Set toolchain variant to zephyr (uses SDK toolchain)
 export ZEPHYR_TOOLCHAIN_VARIANT=zephyr

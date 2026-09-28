@@ -1,0 +1,152 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * ESP32-C6 as the ONLY driver of all four motor gates, commanded by the FPGA
+ * over the existing UART link.
+ *
+ * THIS OVERLAY DRIVES THE GATES. It is the opposite of motor_safe.overlay,
+ * which parks the same four pins as pulled-down inputs so the FPGA can own
+ * them. Both cannot be true at once, and flashing this image REPLACES the gate
+ * probe every motor measurement in this investigation was made with. Reflash
+ * motor_safe to get the instrument back.
+ *
+ * Why the ESP owns all four rather than only motor4: FPGA ball F13 is dead as
+ * an output (proven with a bare-metal bitstream: M1/M2/M3 read back exact, M4
+ * reads nothing, and F13 as an input reads the carrier's 10k pulldown, so the
+ * net is intact and the driver is not). Every gate is a wired-OR of an FPGA 47R
+ * and an ESP 47R into that 10k, so keeping three motors dual-driven would leave
+ * the contention that parks a contested gate near half rail. One owner per gate.
+ *
+ * Pin map is the routed PCB's, same as motor_4.overlay:
+ *   MOTOR1 = GPIO21   MOTOR2 = GPIO20   MOTOR3 = GPIO23   MOTOR4 = GPIO22
+ * 20 kHz, active-high into the SI2302 gate: duty 0 really is motor off.
+ *
+ * The FPGA link and the console are wired exactly as esp_bridge.overlay proved:
+ *
+ *   ESP U0TXD/GPIO16 (31)  -> JB1 95 -> FPGA E13 (J1_96) uart1_rxd
+ *   ESP U0RXD/GPIO17 (30)  <- JB1 97 <- FPGA F14 (J1_98) uart1_txd
+ *
+ * The console HAS to move off uart0, because uart0 is the FPGA link: leave it
+ * there and every printk is transmitted into the flight controller's receiver,
+ * where the frame decoder would at best count it as noise. It moves to the
+ * native USB Serial/JTAG unit on the USB-C port -- the same cable used to flash.
+ */
+
+#include <zephyr/dt-bindings/pwm/pwm.h>
+#include <zephyr/dt-bindings/pinctrl/esp32c6-pinctrl.h>
+
+/ {
+	chosen {
+		zephyr,console = &usb_serial;
+		zephyr,shell-uart = &usb_serial;
+	};
+
+	aliases {
+		fpga-uart = &uart0;
+		pwm-motor0 = &pwm_motor0;
+		pwm-motor1 = &pwm_motor1;
+		pwm-motor2 = &pwm_motor2;
+		pwm-motor3 = &pwm_motor3;
+	};
+
+	pwmleds {
+		compatible = "pwm-leds";
+
+		/*
+		 * 50000 ns = 20 kHz. motor_1/motor_4.overlay carry 20000 in this
+		 * cell while their applications pass 50000 ns explicitly to
+		 * pwm_set_dt(), so the cell there is dead weight that disagrees
+		 * with the comment above it. Stated correctly here so that
+		 * pwm_set_pulse_dt() -- which uses the cell -- means 20 kHz too.
+		 */
+		pwm_motor0: pwm_motor_gpio21 {
+			label = "MOTOR1";
+			pwms = <&ledc0 0 50000 PWM_POLARITY_NORMAL>;
+		};
+
+		pwm_motor1: pwm_motor_gpio20 {
+			label = "MOTOR2";
+			pwms = <&ledc0 1 50000 PWM_POLARITY_NORMAL>;
+		};
+
+		pwm_motor2: pwm_motor_gpio23 {
+			label = "MOTOR3";
+			pwms = <&ledc0 2 50000 PWM_POLARITY_NORMAL>;
+		};
+
+		pwm_motor3: pwm_motor_gpio22 {
+			label = "MOTOR4";
+			pwms = <&ledc0 3 50000 PWM_POLARITY_NORMAL>;
+		};
+	};
+};
+
+&pinctrl {
+	ledc0_default: ledc0_default {
+		group1 {
+			pinmux = <LEDC_CH0_GPIO21>,
+				 <LEDC_CH1_GPIO20>,
+				 <LEDC_CH2_GPIO23>,
+				 <LEDC_CH3_GPIO22>;
+			output-enable;
+		};
+	};
+
+	uart0_fpga: uart0_fpga {
+		group1 {
+			pinmux = <UART0_TX_GPIO16>;
+			output-high;
+		};
+		group2 {
+			pinmux = <UART0_RX_GPIO17>;
+			bias-pull-up;
+		};
+	};
+};
+
+&ledc0 {
+	pinctrl-0 = <&ledc0_default>;
+	pinctrl-names = "default";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	channel0@0 {
+		reg = <0x0>;
+		timer = <0>;
+	};
+
+	channel1@1 {
+		reg = <0x1>;
+		timer = <0>;
+	};
+
+	channel2@2 {
+		reg = <0x2>;
+		timer = <0>;
+	};
+
+	channel3@3 {
+		reg = <0x3>;
+		timer = <0>;
+	};
+};
+
+&uart0 {
+	status = "okay";
+	pinctrl-0 = <&uart0_fpga>;
+	pinctrl-names = "default";
+	/*
+	 * Must match hardware/zephyr/fpga-esp-uart.overlay's current-speed. That
+	 * overlay says plainly that its 115200 is a starting point and not a
+	 * measured value, while esp_bridge.overlay claims esp_uart proved it --
+	 * the two disagree, so treat this as UNVERIFIED until the bench says
+	 * otherwise. Changing it means changing both files together.
+	 */
+	current-speed = <115200>;
+};
+
+/* Carries the console and the status line, over the same cable used to flash. */
+&usb_serial {
+	status = "okay";
+};
